@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { EVMProvider } from "@/contexts/EVMContext";
 import { Layout } from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
+import Projects from "@/pages/Projects";
 import DataEntry from "@/pages/DataEntry";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -21,8 +22,8 @@ const App = () => (
           <Layout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/projetos" element={<DataEntry defaultTab="projects" />} />
-              <Route path="/lancamentos" element={<DataEntry defaultTab="tasks" />} />
+              <Route path="/projetos" element={<Projects />} />
+              <Route path="/lancamentos" element={<DataEntry defaultTab="stages" />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

@@ -42,16 +42,16 @@
 
     --radius: 0.75rem;
 
-    --chart-pv: 220 15% 55%;
-    --chart-ac: 25 30% 52%;
-    --chart-ev: 200 35% 48%;
-    --chart-eac: 220 20% 45%;
-    --chart-etc: 35 25% 50%;
-    --chart-cv: 200 35% 48%;
-    --chart-sv: 25 30% 52%;
-    --chart-cpi: 200 30% 45%;
-    --chart-spi: 35 25% 50%;
-    --chart-stage: 220 12% 58%;
+    --chart-pv: 215 70% 55%;
+    --chart-ac: 30 85% 55%;
+    --chart-ev: 173 65% 42%;
+    --chart-eac: 250 60% 55%;
+    --chart-etc: 20 80% 55%;
+    --chart-cv: 195 75% 48%;
+    --chart-sv: 340 65% 55%;
+    --chart-cpi: 210 75% 50%;
+    --chart-spi: 45 85% 50%;
+    --chart-stage: 215 60% 55%;
 
     --sidebar-background: 220 25% 12%;
     --sidebar-foreground: 220 10% 80%;
