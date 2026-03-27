@@ -21,7 +21,8 @@ const App = () => (
           <Layout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/lancamentos" element={<DataEntry />} />
+              <Route path="/projetos" element={<DataEntry defaultTab="projects" />} />
+              <Route path="/lancamentos" element={<DataEntry defaultTab="tasks" />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

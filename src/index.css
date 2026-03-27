@@ -42,15 +42,16 @@
 
     --radius: 0.75rem;
 
-    --chart-pv: 220 70% 55%;
-    --chart-ac: 0 72% 51%;
-    --chart-ev: 152 60% 40%;
-    --chart-eac: 38 92% 50%;
-    --chart-etc: 280 60% 55%;
-    --chart-cv: 152 60% 40%;
-    --chart-sv: 38 92% 50%;
-    --chart-cpi: 173 58% 39%;
-    --chart-spi: 280 60% 55%;
+    --chart-pv: 220 15% 55%;
+    --chart-ac: 25 30% 52%;
+    --chart-ev: 200 35% 48%;
+    --chart-eac: 220 20% 45%;
+    --chart-etc: 35 25% 50%;
+    --chart-cv: 200 35% 48%;
+    --chart-sv: 25 30% 52%;
+    --chart-cpi: 200 30% 45%;
+    --chart-spi: 35 25% 50%;
+    --chart-stage: 220 12% 58%;
 
     --sidebar-background: 220 25% 12%;
     --sidebar-foreground: 220 10% 80%;
@@ -143,16 +144,20 @@
     @apply bg-card rounded-lg border p-4;
   }
 
-  .filter-chip {
-    @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer border;
+  .segmented-control {
+    @apply inline-flex bg-muted rounded-lg p-0.5 gap-0;
   }
 
-  .filter-chip-active {
-    @apply bg-primary text-primary-foreground border-primary;
+  .segmented-btn {
+    @apply px-3 py-1.5 text-sm font-medium transition-all cursor-pointer rounded-md;
   }
 
-  .filter-chip-inactive {
-    @apply bg-muted text-muted-foreground border-transparent hover:border-border;
+  .segmented-btn-active {
+    @apply bg-card text-foreground shadow-sm;
+  }
+
+  .segmented-btn-inactive {
+    @apply text-muted-foreground hover:text-foreground;
   }
 
   .insight-card {

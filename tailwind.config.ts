@@ -79,6 +79,7 @@ export default {
           sv: "hsl(var(--chart-sv))",
           cpi: "hsl(var(--chart-cpi))",
           spi: "hsl(var(--chart-spi))",
+          stage: "hsl(var(--chart-stage))",
         },
         kpi: {
           positive: "hsl(var(--kpi-positive))",
