@@ -4,6 +4,7 @@ import { Stage, Task } from "@/types/evm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,11 +25,24 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
 
   const [stageName, setStageName] = useState('');
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
+  const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
 
   const [taskForm, setTaskForm] = useState({ name: '', stageId: '', date: '', pv: '', ac: '', ev: '' });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [csvLoading, setCsvLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Currency parser: "1.500,00" -> 1500.00 ---
+  const parseCurrency = (value: string | undefined): number => {
+    if (!value) return 0;
+    const cleaned = value.replace(/"/g, '').trim();
+    if (!cleaned) return 0;
+    // Brazilian format: dots as thousands sep, comma as decimal sep
+    const normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
+    const num = parseFloat(normalized);
+    return isNaN(num) ? 0 : num;
+  };
 
   const handleSaveStage = async () => {
     if (!stageName || !selectedProjectId) return;
@@ -70,6 +84,73 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
     setTaskForm({ name: '', stageId: '', date: '', pv: '', ac: '', ev: '' });
   };
 
+  // --- Bulk delete handlers ---
+  const toggleStageSelection = (id: string) => {
+    setSelectedStageIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllStages = () => {
+    if (selectedStageIds.size === projectStages.length) {
+      setSelectedStageIds(new Set());
+    } else {
+      setSelectedStageIds(new Set(projectStages.map(s => s.id)));
+    }
+  };
+
+  const deleteSelectedStages = async () => {
+    for (const id of selectedStageIds) {
+      await deleteStage(id);
+    }
+    setSelectedStageIds(new Set());
+    toast.success(`${selectedStageIds.size} etapa(s) excluída(s).`);
+  };
+
+  const deleteAllStages = async () => {
+    for (const s of projectStages) {
+      await deleteStage(s.id);
+    }
+    setSelectedStageIds(new Set());
+    toast.success('Todas as etapas foram excluídas.');
+  };
+
+  const toggleTaskSelection = (id: string) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllTasks = () => {
+    if (selectedTaskIds.size === projectTasks.length) {
+      setSelectedTaskIds(new Set());
+    } else {
+      setSelectedTaskIds(new Set(projectTasks.map(t => t.id)));
+    }
+  };
+
+  const deleteSelectedTasks = async () => {
+    for (const id of selectedTaskIds) {
+      await deleteTask(id);
+    }
+    const count = selectedTaskIds.size;
+    setSelectedTaskIds(new Set());
+    toast.success(`${count} tarefa(s) excluída(s).`);
+  };
+
+  const deleteAllTasks = async () => {
+    for (const t of projectTasks) {
+      await deleteTask(t.id);
+    }
+    setSelectedTaskIds(new Set());
+    toast.success('Todas as tarefas foram excluídas.');
+  };
+
+  // --- CSV helpers ---
   const normalizeHeader = (header: string): string => {
     const h = header.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (['data', 'date'].includes(h)) return 'date';
@@ -116,32 +197,25 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
       if (nameIdx === -1) { toast.error('Coluna "Nome" não encontrada no cabeçalho do CSV.'); return; }
       if (dateIdx === -1) { toast.error('Coluna "Data" não encontrada no cabeçalho do CSV.'); return; }
 
-      // Build a map of existing stage names for this project
       const existingStages = new Map<string, string>();
       projectStages.forEach(s => existingStages.set(s.name.toLowerCase(), s.id));
 
-      // Collect unique stage names from CSV and create missing ones
       const stageNames = new Set<string>();
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCSVLine(lines[i]);
-        const stageName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
-        if (stageName && !existingStages.has(stageName.toLowerCase())) {
-          stageNames.add(stageName);
+        const sName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
+        if (sName && !existingStages.has(sName.toLowerCase())) {
+          stageNames.add(sName);
         }
       }
 
-      // Create new stages
       for (const name of stageNames) {
         await addStage({ projectId: selectedProjectId, name });
       }
 
-      // Refresh stage map after creation - read from context (stages state will be updated by addStage)
-      // We need a small delay or re-read. Instead, build map from what we know:
-      const updatedStages = new Map<string, string>(existingStages);
-      // The addStage calls update context, but we need IDs. Let's re-fetch from stages state.
-      // Actually stages state updates async. Let's query supabase directly for this project's stages.
       const { data: freshStages } = await (await import('@/integrations/supabase/client')).supabase
         .from('stages').select('*').eq('project_id', selectedProjectId);
+      const updatedStages = new Map<string, string>(existingStages);
       if (freshStages) {
         freshStages.forEach(s => updatedStages.set(s.name.toLowerCase(), s.id));
       }
@@ -153,7 +227,6 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
         if (!name) continue;
 
         const rawDate = dateIdx !== -1 ? cols[dateIdx]?.trim() : '';
-        // Try to parse date in multiple formats: dd/mm/yyyy, yyyy-mm-dd, mm/dd/yyyy
         let date = '';
         if (rawDate.includes('/')) {
           const parts = rawDate.split('/');
@@ -169,13 +242,13 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
         }
         if (!date) continue;
 
-        const stageName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
-        const stageId = stageName ? updatedStages.get(stageName.toLowerCase()) : projectStages[0]?.id;
+        const sName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
+        const stageId = sName ? updatedStages.get(sName.toLowerCase()) : projectStages[0]?.id;
         if (!stageId) continue;
 
-        const pv = pvIdx !== -1 ? Number(cols[pvIdx]?.replace(',', '.')) || 0 : 0;
-        const ac = acIdx !== -1 ? Number(cols[acIdx]?.replace(',', '.')) || 0 : 0;
-        const ev = evIdx !== -1 ? Number(cols[evIdx]?.replace(',', '.')) || 0 : 0;
+        const pv = pvIdx !== -1 ? parseCurrency(cols[pvIdx]) : 0;
+        const ac = acIdx !== -1 ? parseCurrency(cols[acIdx]) : 0;
+        const ev = evIdx !== -1 ? parseCurrency(cols[evIdx]) : 0;
 
         await addTask({ projectId: selectedProjectId, stageId, name, date, pv, ac, ev });
         imported++;
@@ -189,6 +262,12 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
       setCsvLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // Format date for display without timezone shift
+  const formatDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   if (!selectedProjectId) {
@@ -227,12 +306,72 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
               )}
             </div>
           </Card>
+
+          {/* Bulk actions for stages */}
+          {projectStages.length > 0 && (
+            <div className="flex gap-2 items-center">
+              {selectedStageIds.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4 mr-1" /> Excluir Selecionadas ({selectedStageIds.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                      <AlertDialogDescription>Tem certeza que deseja excluir {selectedStageIds.size} etapa(s) selecionada(s)? As tarefas associadas serão removidas.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={deleteSelectedStages} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive border-destructive/50">
+                    <Trash2 className="h-4 w-4 mr-1" /> Excluir Todas
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar exclusão total</AlertDialogTitle>
+                    <AlertDialogDescription>Tem certeza que deseja excluir TODAS as {projectStages.length} etapa(s)? Todas as tarefas associadas serão removidas.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteAllStages} className="bg-destructive text-destructive-foreground">Excluir Todas</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+
           <Card className="p-4">
             <Table>
-              <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead className="w-[100px]">Ações</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={projectStages.length > 0 && selectedStageIds.size === projectStages.length}
+                      onCheckedChange={toggleAllStages}
+                    />
+                  </TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {projectStages.map(s => (
                   <TableRow key={s.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedStageIds.has(s.id)}
+                        onCheckedChange={() => toggleStageSelection(s.id)}
+                      />
+                    </TableCell>
                     <TableCell>{s.name}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -257,7 +396,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
                   </TableRow>
                 ))}
                 {projectStages.length === 0 && (
-                  <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-8">Nenhuma etapa cadastrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhuma etapa cadastrada</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -327,10 +466,58 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
                 </div>
               </Card>
 
+              {/* Bulk actions for tasks */}
+              {projectTasks.length > 0 && (
+                <div className="flex gap-2 items-center">
+                  {selectedTaskIds.size > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="h-4 w-4 mr-1" /> Excluir Selecionadas ({selectedTaskIds.size})
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>Tem certeza que deseja excluir {selectedTaskIds.size} tarefa(s) selecionada(s)?</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={deleteSelectedTasks} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive border-destructive/50">
+                        <Trash2 className="h-4 w-4 mr-1" /> Excluir Todas
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar exclusão total</AlertDialogTitle>
+                        <AlertDialogDescription>Tem certeza que deseja excluir TODAS as {projectTasks.length} tarefa(s)?</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={deleteAllTasks} className="bg-destructive text-destructive-foreground">Excluir Todas</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+
               <Card className="p-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={projectTasks.length > 0 && selectedTaskIds.size === projectTasks.length}
+                          onCheckedChange={toggleAllTasks}
+                        />
+                      </TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Etapa</TableHead>
                       <TableHead>Data</TableHead>
@@ -345,9 +532,15 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
                       const stage = stages.find(s => s.id === t.stageId);
                       return (
                         <TableRow key={t.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedTaskIds.has(t.id)}
+                              onCheckedChange={() => toggleTaskSelection(t.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{t.name}</TableCell>
                           <TableCell>{stage?.name || '-'}</TableCell>
-                          <TableCell>{new Date(t.date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatDate(t.date)}</TableCell>
                           <TableCell className="font-mono text-sm">R$ {t.pv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="font-mono text-sm">R$ {t.ac.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="font-mono text-sm">R$ {t.ev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
@@ -375,7 +568,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
                       );
                     })}
                     {projectTasks.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma tarefa cadastrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma tarefa cadastrada</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
