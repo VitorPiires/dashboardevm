@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -30,6 +34,14 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -56,6 +68,22 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        chart: {
+          pv: "hsl(var(--chart-pv))",
+          ac: "hsl(var(--chart-ac))",
+          ev: "hsl(var(--chart-ev))",
+          eac: "hsl(var(--chart-eac))",
+          etc: "hsl(var(--chart-etc))",
+          cv: "hsl(var(--chart-cv))",
+          sv: "hsl(var(--chart-sv))",
+          cpi: "hsl(var(--chart-cpi))",
+          spi: "hsl(var(--chart-spi))",
+        },
+        kpi: {
+          positive: "hsl(var(--kpi-positive))",
+          negative: "hsl(var(--kpi-negative))",
+          neutral: "hsl(var(--kpi-neutral))",
         },
       },
       borderRadius: {
