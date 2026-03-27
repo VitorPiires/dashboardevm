@@ -270,6 +270,20 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
             <p className="text-muted-foreground">Cadastre ao menos uma etapa antes de adicionar tarefas.</p>
           ) : (
             <>
+              <Card className="p-4 border-dashed">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Importar CSV</h3>
+                    <p className="text-sm text-muted-foreground">A primeira linha deve conter os nomes: Data, Nome, Etapa, PV, AC, EV</p>
+                  </div>
+                  <div>
+                    <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} className="hidden" />
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={csvLoading}>
+                      <Upload className="h-4 w-4 mr-1" /> {csvLoading ? 'Importando...' : 'Carregar CSV'}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
               <Card className="p-4">
                 <h3 className="font-semibold mb-3">{editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
