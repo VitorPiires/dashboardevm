@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Project, Stage, Task, EVMMetrics, DateFilter } from '@/types/evm';
 
 interface EVMContextType {
@@ -8,18 +9,19 @@ interface EVMContextType {
   selectedProjectId: string | null;
   dateFilter: DateFilter;
   selectedStageIds: string[];
+  loading: boolean;
   setSelectedProjectId: (id: string | null) => void;
   setDateFilter: (f: DateFilter) => void;
   setSelectedStageIds: (ids: string[]) => void;
-  addProject: (p: Omit<Project, 'id' | 'createdAt'>) => void;
-  updateProject: (p: Project) => void;
-  deleteProject: (id: string) => void;
-  addStage: (s: Omit<Stage, 'id'>) => void;
-  updateStage: (s: Stage) => void;
-  deleteStage: (id: string) => void;
-  addTask: (t: Omit<Task, 'id'>) => void;
-  updateTask: (t: Task) => void;
-  deleteTask: (id: string) => void;
+  addProject: (p: Omit<Project, 'id' | 'createdAt'>) => Promise<void>;
+  updateProject: (p: Project) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  addStage: (s: Omit<Stage, 'id'>) => Promise<void>;
+  updateStage: (s: Stage) => Promise<void>;
+  deleteStage: (id: string) => Promise<void>;
+  addTask: (t: Omit<Task, 'id'>) => Promise<void>;
+  updateTask: (t: Task) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   getFilteredTasks: () => Task[];
   getMetrics: () => EVMMetrics;
   getProjectStages: () => Stage[];
@@ -56,71 +58,111 @@ export interface Insight {
 
 const EVMContext = createContext<EVMContextType | undefined>(undefined);
 
-function generateId() {
-  return crypto.randomUUID();
-}
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export function EVMProvider({ children }: { children: React.ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(() => loadFromStorage('evm_projects', []));
-  const [stages, setStages] = useState<Stage[]>(() => loadFromStorage('evm_stages', []));
-  const [tasks, setTasks] = useState<Task[]>(() => loadFromStorage('evm_tasks', []));
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => loadFromStorage('evm_selected_project', null));
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [selectedStageIds, setSelectedStageIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { localStorage.setItem('evm_projects', JSON.stringify(projects)); }, [projects]);
-  useEffect(() => { localStorage.setItem('evm_stages', JSON.stringify(stages)); }, [stages]);
-  useEffect(() => { localStorage.setItem('evm_tasks', JSON.stringify(tasks)); }, [tasks]);
-  useEffect(() => { localStorage.setItem('evm_selected_project', JSON.stringify(selectedProjectId)); }, [selectedProjectId]);
+  // Fetch all data on mount
+  useEffect(() => {
+    async function fetchAll() {
+      setLoading(true);
+      const [pRes, sRes, tRes] = await Promise.all([
+        supabase.from('projects').select('*').order('created_at', { ascending: true }),
+        supabase.from('stages').select('*').order('created_at', { ascending: true }),
+        supabase.from('tasks').select('*').order('date', { ascending: true }),
+      ]);
+      const mappedProjects: Project[] = (pRes.data || []).map(r => ({
+        id: r.id, name: r.name, bac: Number(r.bac),
+        startDate: r.start_date, endDate: r.end_date, createdAt: r.created_at,
+      }));
+      const mappedStages: Stage[] = (sRes.data || []).map(r => ({
+        id: r.id, projectId: r.project_id, name: r.name,
+      }));
+      const mappedTasks: Task[] = (tRes.data || []).map(r => ({
+        id: r.id, projectId: r.project_id, stageId: r.stage_id,
+        name: r.name, date: r.date, pv: Number(r.pv), ac: Number(r.ac), ev: Number(r.ev),
+      }));
+      setProjects(mappedProjects);
+      setStages(mappedStages);
+      setTasks(mappedTasks);
+      if (mappedProjects.length > 0 && !selectedProjectId) {
+        setSelectedProjectId(mappedProjects[0].id);
+      }
+      setLoading(false);
+    }
+    fetchAll();
+  }, []);
 
-  const addProject = useCallback((p: Omit<Project, 'id' | 'createdAt'>) => {
-    const newP: Project = { ...p, id: generateId(), createdAt: new Date().toISOString() };
+  const addProject = useCallback(async (p: Omit<Project, 'id' | 'createdAt'>) => {
+    const { data, error } = await supabase.from('projects').insert({
+      name: p.name, bac: p.bac, start_date: p.startDate, end_date: p.endDate,
+    }).select().single();
+    if (error || !data) return;
+    const newP: Project = { id: data.id, name: data.name, bac: Number(data.bac), startDate: data.start_date, endDate: data.end_date, createdAt: data.created_at };
     setProjects(prev => [...prev, newP]);
     if (!selectedProjectId) setSelectedProjectId(newP.id);
   }, [selectedProjectId]);
 
-  const updateProject = useCallback((p: Project) => {
+  const updateProject = useCallback(async (p: Project) => {
+    await supabase.from('projects').update({
+      name: p.name, bac: p.bac, start_date: p.startDate, end_date: p.endDate,
+    }).eq('id', p.id);
     setProjects(prev => prev.map(x => x.id === p.id ? p : x));
   }, []);
 
-  const deleteProject = useCallback((id: string) => {
+  const deleteProject = useCallback(async (id: string) => {
+    await supabase.from('projects').delete().eq('id', id);
     setProjects(prev => prev.filter(x => x.id !== id));
     setStages(prev => prev.filter(x => x.projectId !== id));
     setTasks(prev => prev.filter(x => x.projectId !== id));
     if (selectedProjectId === id) setSelectedProjectId(null);
   }, [selectedProjectId]);
 
-  const addStage = useCallback((s: Omit<Stage, 'id'>) => {
-    setStages(prev => [...prev, { ...s, id: generateId() }]);
+  const addStage = useCallback(async (s: Omit<Stage, 'id'>) => {
+    const { data, error } = await supabase.from('stages').insert({
+      project_id: s.projectId, name: s.name,
+    }).select().single();
+    if (error || !data) return;
+    setStages(prev => [...prev, { id: data.id, projectId: data.project_id, name: data.name }]);
   }, []);
 
-  const updateStage = useCallback((s: Stage) => {
+  const updateStage = useCallback(async (s: Stage) => {
+    await supabase.from('stages').update({ name: s.name }).eq('id', s.id);
     setStages(prev => prev.map(x => x.id === s.id ? s : x));
   }, []);
 
-  const deleteStage = useCallback((id: string) => {
+  const deleteStage = useCallback(async (id: string) => {
+    await supabase.from('stages').delete().eq('id', id);
     setStages(prev => prev.filter(x => x.id !== id));
     setTasks(prev => prev.filter(x => x.stageId !== id));
   }, []);
 
-  const addTask = useCallback((t: Omit<Task, 'id'>) => {
-    setTasks(prev => [...prev, { ...t, id: generateId() }]);
+  const addTask = useCallback(async (t: Omit<Task, 'id'>) => {
+    const { data, error } = await supabase.from('tasks').insert({
+      project_id: t.projectId, stage_id: t.stageId,
+      name: t.name, date: t.date, pv: t.pv, ac: t.ac, ev: t.ev,
+    }).select().single();
+    if (error || !data) return;
+    setTasks(prev => [...prev, {
+      id: data.id, projectId: data.project_id, stageId: data.stage_id,
+      name: data.name, date: data.date, pv: Number(data.pv), ac: Number(data.ac), ev: Number(data.ev),
+    }]);
   }, []);
 
-  const updateTask = useCallback((t: Task) => {
+  const updateTask = useCallback(async (t: Task) => {
+    await supabase.from('tasks').update({
+      name: t.name, stage_id: t.stageId, date: t.date, pv: t.pv, ac: t.ac, ev: t.ev,
+    }).eq('id', t.id);
     setTasks(prev => prev.map(x => x.id === t.id ? t : x));
   }, []);
 
-  const deleteTask = useCallback((id: string) => {
+  const deleteTask = useCallback(async (id: string) => {
+    await supabase.from('tasks').delete().eq('id', id);
     setTasks(prev => prev.filter(x => x.id !== id));
   }, []);
 
@@ -247,7 +289,7 @@ export function EVMProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <EVMContext.Provider value={{
-      projects, stages, tasks, selectedProjectId, dateFilter, selectedStageIds,
+      projects, stages, tasks, selectedProjectId, dateFilter, selectedStageIds, loading,
       setSelectedProjectId, setDateFilter, setSelectedStageIds,
       addProject, updateProject, deleteProject,
       addStage, updateStage, deleteStage,
