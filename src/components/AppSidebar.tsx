@@ -22,6 +22,7 @@ import {
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Projetos", url: "/projetos", icon: FolderKanban },
   { title: "Lançamentos", url: "/lancamentos", icon: Database },
 ];
 

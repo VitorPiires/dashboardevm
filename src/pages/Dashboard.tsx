@@ -8,7 +8,6 @@ import { CVSVChart } from "@/components/dashboard/CVSVChart";
 import { CPISPIChart } from "@/components/dashboard/CPISPIChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 import { DataTable } from "@/components/dashboard/DataTable";
-import { Badge } from "@/components/ui/badge";
 
 const dateFilterOptions: { label: string; value: DateFilter }[] = [
   { label: "Tudo", value: "all" },
@@ -29,7 +28,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
         <p className="text-lg font-medium">Nenhum projeto selecionado</p>
-        <p className="text-sm mt-1">Crie um projeto na aba de Lançamentos para começar.</p>
+        <p className="text-sm mt-1">Crie um projeto na aba de Projetos para começar.</p>
       </div>
     );
   }
@@ -52,16 +51,16 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-start">
+      {/* Segmented Filters */}
+      <div className="flex flex-wrap gap-6 items-start">
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Período</p>
-          <div className="flex gap-1.5">
+          <div className="segmented-control">
             {dateFilterOptions.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => setDateFilter(opt.value)}
-                className={`filter-chip ${dateFilter === opt.value ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+                className={`segmented-btn ${dateFilter === opt.value ? 'segmented-btn-active' : 'segmented-btn-inactive'}`}
               >
                 {opt.label}
               </button>
@@ -72,12 +71,12 @@ export default function Dashboard() {
         {projectStages.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Etapas</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="segmented-control">
               {projectStages.map(stage => (
                 <button
                   key={stage.id}
                   onClick={() => toggleStage(stage.id)}
-                  className={`filter-chip ${selectedStageIds.includes(stage.id) ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+                  className={`segmented-btn ${selectedStageIds.includes(stage.id) ? 'segmented-btn-active' : 'segmented-btn-inactive'}`}
                 >
                   {stage.name}
                 </button>
@@ -85,7 +84,7 @@ export default function Dashboard() {
               {selectedStageIds.length > 0 && (
                 <button
                   onClick={() => setSelectedStageIds([])}
-                  className="filter-chip filter-chip-inactive text-xs"
+                  className="segmented-btn segmented-btn-inactive text-xs"
                 >
                   Limpar
                 </button>

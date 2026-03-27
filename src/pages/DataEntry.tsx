@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
 
-export default function DataEntry() {
+export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: string }) {
   const {
     projects, stages, tasks, selectedProjectId,
     addProject, updateProject, deleteProject,
@@ -97,7 +97,7 @@ export default function DataEntry() {
     <div className="space-y-6 max-w-[1200px] mx-auto">
       <h1 className="text-2xl font-bold">Lançamentos</h1>
 
-      <Tabs defaultValue="projects">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="projects">Projetos</TabsTrigger>
           <TabsTrigger value="stages">Etapas</TabsTrigger>
