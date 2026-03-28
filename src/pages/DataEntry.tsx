@@ -214,7 +214,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
 
       const stageNames = new Set<string>();
       for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
+        const cols = parseCSVLine(lines[i], delimiter);
         const sName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
         if (sName && !existingStages.has(sName.toLowerCase())) {
           stageNames.add(sName);
@@ -234,7 +234,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
 
       let imported = 0;
       for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
+        const cols = parseCSVLine(lines[i], delimiter);
         const name = nameIdx !== -1 ? cols[nameIdx]?.trim() : '';
         if (!name) continue;
 
