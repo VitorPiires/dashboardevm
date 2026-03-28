@@ -162,14 +162,25 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
     return h;
   };
 
-  const parseCSVLine = (line: string): string[] => {
+  const detectDelimiter = (headerLine: string): string => {
+    // Count occurrences outside quotes
+    let semicolons = 0, commas = 0, inQ = false;
+    for (const ch of headerLine) {
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (!inQ && ch === ';') semicolons++;
+      if (!inQ && ch === ',') commas++;
+    }
+    return semicolons >= commas ? ';' : ',';
+  };
+
+  const parseCSVLine = (line: string, delimiter: string): string[] => {
     const result: string[] = [];
     let current = '';
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if ((ch === ',' || ch === ';') && !inQuotes) { result.push(current.trim()); current = ''; continue; }
+      if (ch === delimiter && !inQuotes) { result.push(current.trim()); current = ''; continue; }
       current += ch;
     }
     result.push(current.trim());
