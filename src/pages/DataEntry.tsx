@@ -197,7 +197,8 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) { toast.error('O arquivo CSV deve ter ao menos 2 linhas (cabeçalho + dados).'); return; }
 
-      const headers = parseCSVLine(lines[0]).map(normalizeHeader);
+      const delimiter = detectDelimiter(lines[0]);
+      const headers = parseCSVLine(lines[0], delimiter).map(normalizeHeader);
       const dateIdx = headers.indexOf('date');
       const nameIdx = headers.indexOf('name');
       const stageIdx = headers.indexOf('stage');
