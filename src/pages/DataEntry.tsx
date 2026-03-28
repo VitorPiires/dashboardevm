@@ -162,14 +162,25 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
     return h;
   };
 
-  const parseCSVLine = (line: string): string[] => {
+  const detectDelimiter = (headerLine: string): string => {
+    // Count occurrences outside quotes
+    let semicolons = 0, commas = 0, inQ = false;
+    for (const ch of headerLine) {
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (!inQ && ch === ';') semicolons++;
+      if (!inQ && ch === ',') commas++;
+    }
+    return semicolons >= commas ? ';' : ',';
+  };
+
+  const parseCSVLine = (line: string, delimiter: string): string[] => {
     const result: string[] = [];
     let current = '';
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
       if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if ((ch === ',' || ch === ';') && !inQuotes) { result.push(current.trim()); current = ''; continue; }
+      if (ch === delimiter && !inQuotes) { result.push(current.trim()); current = ''; continue; }
       current += ch;
     }
     result.push(current.trim());
@@ -186,7 +197,8 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) { toast.error('O arquivo CSV deve ter ao menos 2 linhas (cabeçalho + dados).'); return; }
 
-      const headers = parseCSVLine(lines[0]).map(normalizeHeader);
+      const delimiter = detectDelimiter(lines[0]);
+      const headers = parseCSVLine(lines[0], delimiter).map(normalizeHeader);
       const dateIdx = headers.indexOf('date');
       const nameIdx = headers.indexOf('name');
       const stageIdx = headers.indexOf('stage');
@@ -202,7 +214,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
 
       const stageNames = new Set<string>();
       for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
+        const cols = parseCSVLine(lines[i], delimiter);
         const sName = stageIdx !== -1 ? cols[stageIdx]?.trim() : '';
         if (sName && !existingStages.has(sName.toLowerCase())) {
           stageNames.add(sName);
@@ -222,7 +234,7 @@ export default function DataEntry({ defaultTab = "tasks" }: { defaultTab?: strin
 
       let imported = 0;
       for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
+        const cols = parseCSVLine(lines[i], delimiter);
         const name = nameIdx !== -1 ? cols[nameIdx]?.trim() : '';
         if (!name) continue;
 
