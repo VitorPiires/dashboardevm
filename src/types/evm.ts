@@ -38,5 +38,3 @@ export interface EVMMetrics {
 }
 
 export type DateFilter = '7d' | '30d' | 'all';
-
-export type ETCMode = 'progress' | 'deadline';

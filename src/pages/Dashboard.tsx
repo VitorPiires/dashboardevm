@@ -1,10 +1,9 @@
 import { useEVM } from "@/contexts/EVMContext";
-import { DateFilter, ETCMode } from "@/types/evm";
+import { DateFilter } from "@/types/evm";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { PVACEVChart } from "@/components/dashboard/PVACEVChart";
 import { StageCostsChart } from "@/components/dashboard/StageCostsChart";
-import { ETCChart } from "@/components/dashboard/ETCChart";
-import { EACChart } from "@/components/dashboard/EACChart";
+import { EACETCChart } from "@/components/dashboard/EACETCChart";
 import { CVSVChart } from "@/components/dashboard/CVSVChart";
 import { CPISPIChart } from "@/components/dashboard/CPISPIChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
@@ -16,16 +15,10 @@ const dateFilterOptions: { label: string; value: DateFilter }[] = [
   { label: "30 dias", value: "30d" },
 ];
 
-const etcModeOptions: { label: string; value: ETCMode }[] = [
-  { label: "Progresso atual", value: "progress" },
-  { label: "Dentro do prazo", value: "deadline" },
-];
-
 export default function Dashboard() {
   const {
     selectedProjectId, projects, dateFilter, setDateFilter,
     selectedStageIds, setSelectedStageIds, getProjectStages,
-    etcMode, setEtcMode,
   } = useEVM();
 
   const project = projects.find(p => p.id === selectedProjectId);
@@ -99,21 +92,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Cálculo do ETC</p>
-          <div className="segmented-control">
-            {etcModeOptions.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setEtcMode(opt.value)}
-                className={`segmented-btn ${etcMode === opt.value ? 'segmented-btn-active' : 'segmented-btn-inactive'}`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <KPICards />
@@ -123,8 +101,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PVACEVChart />
         <StageCostsChart />
-        <ETCChart />
-        <EACChart />
+        <EACETCChart />
         <CVSVChart />
         <CPISPIChart />
       </div>
