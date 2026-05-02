@@ -1,5 +1,5 @@
 import { useEVM } from "@/contexts/EVMContext";
-import { DateFilter } from "@/types/evm";
+import { DateFilter, ETCMode } from "@/types/evm";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { PVACEVChart } from "@/components/dashboard/PVACEVChart";
 import { StageCostsChart } from "@/components/dashboard/StageCostsChart";
@@ -15,10 +15,16 @@ const dateFilterOptions: { label: string; value: DateFilter }[] = [
   { label: "30 dias", value: "30d" },
 ];
 
+const etcModeOptions: { label: string; value: ETCMode }[] = [
+  { label: "Mesmo progresso", value: "cpi" },
+  { label: "Terminar no prazo", value: "cpi_spi" },
+];
+
 export default function Dashboard() {
   const {
     selectedProjectId, projects, dateFilter, setDateFilter,
     selectedStageIds, setSelectedStageIds, getProjectStages,
+    etcMode, setEtcMode,
   } = useEVM();
 
   const project = projects.find(p => p.id === selectedProjectId);
@@ -92,6 +98,22 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Cálculo do ETC</p>
+          <div className="segmented-control">
+            {etcModeOptions.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setEtcMode(opt.value)}
+                className={`segmented-btn ${etcMode === opt.value ? 'segmented-btn-active' : 'segmented-btn-inactive'}`}
+                title={opt.value === 'cpi' ? 'ETC = (BAC - EV) / CPI' : 'ETC = (BAC - EV) / (CPI × SPI)'}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <KPICards />

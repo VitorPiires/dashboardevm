@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Project, Stage, Task, EVMMetrics, DateFilter } from '@/types/evm';
+import { Project, Stage, Task, EVMMetrics, DateFilter, ETCMode } from '@/types/evm';
 
 interface EVMContextType {
   projects: Project[];
@@ -9,10 +9,12 @@ interface EVMContextType {
   selectedProjectId: string | null;
   dateFilter: DateFilter;
   selectedStageIds: string[];
+  etcMode: ETCMode;
   loading: boolean;
   setSelectedProjectId: (id: string | null) => void;
   setDateFilter: (f: DateFilter) => void;
   setSelectedStageIds: (ids: string[]) => void;
+  setEtcMode: (m: ETCMode) => void;
   addProject: (p: Omit<Project, 'id' | 'createdAt'>) => Promise<void>;
   updateProject: (p: Project) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -65,6 +67,7 @@ export function EVMProvider({ children }: { children: React.ReactNode }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [selectedStageIds, setSelectedStageIds] = useState<string[]>([]);
+  const [etcMode, setEtcMode] = useState<ETCMode>('cpi');
   const [loading, setLoading] = useState(true);
 
   // Fetch all data on mount
@@ -202,11 +205,17 @@ export function EVMProvider({ children }: { children: React.ReactNode }) {
     const sv = ev - pv;
     const cpi = ac !== 0 ? ev / ac : 0;
     const spi = pv !== 0 ? ev / pv : 0;
-    const eac = cpi !== 0 ? bac / cpi : 0;
-    const etc = eac - ac;
+    let etc = 0;
+    if (etcMode === 'cpi_spi') {
+      const denom = cpi * spi;
+      etc = denom !== 0 ? (bac - ev) / denom : 0;
+    } else {
+      etc = cpi !== 0 ? (bac - ev) / cpi : 0;
+    }
+    const eac = ac + etc;
 
     return { bac, ac, pv, ev, cv, sv, cpi, spi, eac, etc };
-  }, [selectedProjectId, projects, getFilteredTasks]);
+  }, [selectedProjectId, projects, getFilteredTasks, etcMode]);
 
   const getTimeSeriesData = useCallback((): TimeSeriesPoint[] => {
     const filtered = getFilteredTasks();
@@ -233,13 +242,19 @@ export function EVMProvider({ children }: { children: React.ReactNode }) {
       cumEv += d.ev;
       const cpi = cumAc !== 0 ? cumEv / cumAc : 0;
       const spi = cumPv !== 0 ? cumEv / cumPv : 0;
-      const eac = cpi !== 0 ? project.bac / cpi : 0;
-      const etc = eac - cumAc;
+      let etc = 0;
+      if (etcMode === 'cpi_spi') {
+        const denom = cpi * spi;
+        etc = denom !== 0 ? (project.bac - cumEv) / denom : 0;
+      } else {
+        etc = cpi !== 0 ? (project.bac - cumEv) / cpi : 0;
+      }
+      const eac = cumAc + etc;
       const cv = cumEv - cumAc;
       const sv = cumEv - cumPv;
       return { date, pv: cumPv, ac: cumAc, ev: cumEv, eac, etc, cv, sv, cpi, spi };
     });
-  }, [getFilteredTasks, selectedProjectId, projects]);
+  }, [getFilteredTasks, selectedProjectId, projects, etcMode]);
 
   const getStageData = useCallback((): StageDataPoint[] => {
     const filtered = getFilteredTasks();
@@ -289,8 +304,8 @@ export function EVMProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <EVMContext.Provider value={{
-      projects, stages, tasks, selectedProjectId, dateFilter, selectedStageIds, loading,
-      setSelectedProjectId, setDateFilter, setSelectedStageIds,
+      projects, stages, tasks, selectedProjectId, dateFilter, selectedStageIds, etcMode, loading,
+      setSelectedProjectId, setDateFilter, setSelectedStageIds, setEtcMode,
       addProject, updateProject, deleteProject,
       addStage, updateStage, deleteStage,
       addTask, updateTask, deleteTask,
