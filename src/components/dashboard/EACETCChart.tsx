@@ -1,5 +1,6 @@
 import { useEVM } from "@/contexts/EVMContext";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { formatChartDate, axisTickStyle, axisStroke, tooltipContentStyle, tooltipLabelStyle, tooltipItemStyle } from "@/lib/chartFormat";
 
 export function EACETCChart() {
   const { getTimeSeriesData } = useEVM();
@@ -14,9 +15,9 @@ export function EACETCChart() {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+            <XAxis dataKey="date" tick={axisTickStyle} stroke={axisStroke} tickFormatter={formatChartDate} />
+            <YAxis tick={axisTickStyle} stroke={axisStroke} />
+            <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} labelFormatter={formatChartDate} />
             <Legend />
             <Line type="monotone" dataKey="eac" name="EAC" stroke="hsl(var(--chart-eac))" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="etc" name="ETC" stroke="hsl(var(--chart-etc))" strokeWidth={2} dot={false} />
