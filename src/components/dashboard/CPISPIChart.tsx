@@ -1,5 +1,6 @@
 import { useEVM } from "@/contexts/EVMContext";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import { formatChartDate, axisTickStyle, axisStroke, tooltipContentStyle, tooltipLabelStyle, tooltipItemStyle } from "@/lib/chartFormat";
 
 export function CPISPIChart() {
   const { getTimeSeriesData } = useEVM();
@@ -14,9 +15,9 @@ export function CPISPIChart() {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" domain={['auto', 'auto']} />
-            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+            <XAxis dataKey="date" tick={axisTickStyle} stroke={axisStroke} tickFormatter={formatChartDate} />
+            <YAxis tick={axisTickStyle} stroke={axisStroke} domain={['auto', 'auto']} />
+            <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} labelFormatter={formatChartDate} />
             <Legend />
             <ReferenceLine y={1} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeOpacity={0.5} />
             <Line type="monotone" dataKey="cpi" name="CPI" stroke="hsl(var(--chart-cpi))" strokeWidth={2} dot={false} />
